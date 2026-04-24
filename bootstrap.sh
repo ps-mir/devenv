@@ -15,6 +15,17 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# ── logging ───────────────────────────────────────────────────────────────────
+LOG_DIR="$HOME/.devenv/logs"
+LOG_FILE="$LOG_DIR/bootstrap-$(date +%Y%m%d-%H%M%S).log"
+MAX_LOGS=10
+
+mkdir -p "$LOG_DIR"
+ls -t "$LOG_DIR"/bootstrap-*.log 2>/dev/null | tail -n +$((MAX_LOGS + 1)) | xargs rm -f || true
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+echo "Logging to: $LOG_FILE"
+
 # ── print coder params ────────────────────────────────────────────────────────
 echo "============================================"
 echo " Coder Parameters"
