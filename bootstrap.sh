@@ -87,4 +87,13 @@ else
   echo "uv already installed: $(uv --version)"
 fi
 
+# ── ansible ───────────────────────────────────────────────────────────────────
+if ! command -v ansible-playbook &>/dev/null; then
+  echo "Installing ansible..."
+  uv tool install ansible
+  echo "ansible installed: $(ansible --version | head -1)"
+else
+  echo "ansible already installed: $(ansible --version | head -1)"
+fi
+
 echo "Bootstrap complete."
