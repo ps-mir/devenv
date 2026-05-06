@@ -30,9 +30,10 @@ echo "Logging to: $LOG_FILE"
 echo "============================================"
 echo " Coder Parameters"
 echo "============================================"
-echo "  tags:       ${TAGS:-<none>}"
-echo "  email:      ${EMAIL:-<none>}"
-echo "  extra-vars: ${EXTRA_VARS:-<none>}"
+echo "  tags:         ${TAGS:-<none>}"
+echo "  email:        ${EMAIL:-<none>}"
+echo "  extra-vars:   ${EXTRA_VARS:-<none>}"
+echo "  ansible-roles: ${ANSIBLE_ROLES:-<none>}"
 echo "============================================"
 
 # ── detect os ────────────────────────────────────────────────────────────────
