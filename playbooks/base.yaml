@@ -70,3 +70,33 @@
               - docker-buildx-plugin
               - docker-compose-plugin
             state: present
+
+    - name: Docker non-root access (Debian)
+      when: ansible_facts["os_family"] == "Debian"
+      become: true
+      block:
+
+        - name: Debug env user
+          ansible.builtin.debug:
+            msg: "Configuring Docker non-root access for user: {{ ansible_facts['env']['USER'] }}"
+
+        - name: Create docker group
+          ansible.builtin.group:
+            name: docker
+            state: present
+          register: docker_group_result
+
+        - name: Docker group status
+          ansible.builtin.debug:
+            msg: "{{ 'docker group created' if docker_group_result.changed else 'docker group already exists' }}"
+
+        - name: Add user to docker group
+          ansible.builtin.user:
+            name: "{{ ansible_facts['env']['USER'] }}"
+            groups: docker
+            append: true
+          register: docker_user_result
+
+        - name: Docker user group status
+          ansible.builtin.debug:
+            msg: "{{ 'user ' + ansible_facts['env']['USER'] + ' added to docker group — reboot required.' if docker_user_result.changed else 'user ' + ansible_facts['env']['USER'] + ' already in docker group.' }}"
