@@ -96,9 +96,20 @@ else
   echo "ansible already installed: $(ansible-playbook --version | head -1)"
 fi
 
+# ── clone devenv repo ─────────────────────────────────────────────────────────
+DEVENV_DIR="$HOME/.devenv/repo"
+DEVENV_REPO="https://github.com/ps-mir/devenv.git"
+
+if [ -d "$DEVENV_DIR/.git" ]; then
+  echo "Updating devenv repo..."
+  git -C "$DEVENV_DIR" pull
+else
+  echo "Cloning devenv repo..."
+  git clone "$DEVENV_REPO" "$DEVENV_DIR"
+fi
+
 # ── run base playbook ─────────────────────────────────────────────────────────
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BASE_PLAYBOOK="$SCRIPT_DIR/playbooks/base.yaml"
+BASE_PLAYBOOK="$DEVENV_DIR/playbooks/base.yaml"
 
 echo "Running base playbook: $BASE_PLAYBOOK"
 
