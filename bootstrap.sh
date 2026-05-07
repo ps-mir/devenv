@@ -119,4 +119,17 @@ ANSIBLE_ARGS=()
 
 ansible-playbook "${ANSIBLE_ARGS[@]}" "$BASE_PLAYBOOK"
 
+# ── run role playbooks ─────────────────────────────────────────────────────────
+if [[ -n "${ANSIBLE_ROLES:-}" ]]; then
+  for role in $ANSIBLE_ROLES; do
+    ROLE_PLAYBOOK="$DEVENV_DIR/playbooks/${role}.yaml"
+    if [[ -f "$ROLE_PLAYBOOK" ]]; then
+      echo "Running role playbook: $ROLE_PLAYBOOK"
+      ansible-playbook "${ANSIBLE_ARGS[@]}" "$ROLE_PLAYBOOK"
+    else
+      echo "WARNING: No playbook found for role '$role' (expected: $ROLE_PLAYBOOK)"
+    fi
+  done
+fi
+
 echo "Bootstrap complete."
