@@ -1,0 +1,8 @@
+---
+- name: Base setup
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: true
+
+  tasks: []

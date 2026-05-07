@@ -96,4 +96,16 @@ else
   echo "ansible already installed: $(ansible --version | head -1)"
 fi
 
+# ── run base playbook ─────────────────────────────────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BASE_PLAYBOOK="$SCRIPT_DIR/playbooks/base.yaml"
+
+echo "Running base playbook: $BASE_PLAYBOOK"
+
+ANSIBLE_ARGS=()
+[[ -n "$TAGS" ]]       && ANSIBLE_ARGS+=("--tags" "$TAGS")
+[[ -n "$EXTRA_VARS" ]] && ANSIBLE_ARGS+=("--extra-vars" "$EXTRA_VARS")
+
+ansible-playbook "${ANSIBLE_ARGS[@]}" "$BASE_PLAYBOOK"
+
 echo "Bootstrap complete."
