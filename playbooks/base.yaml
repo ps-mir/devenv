@@ -100,3 +100,36 @@
         - name: Docker user group status
           ansible.builtin.debug:
             msg: "{{ 'user ' + ansible_facts['env']['USER'] + ' added to docker group — reboot required.' if docker_user_result.changed else 'user ' + ansible_facts['env']['USER'] + ' already in docker group.' }}"
+
+    - name: Copy .gitconfig
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../dotfiles/.gitconfig"
+        dest: "{{ ansible_facts['env']['HOME'] }}/.gitconfig"
+        force: true
+
+    - name: Create ~/.devenv/scripts directory
+      ansible.builtin.file:
+        path: "{{ ansible_facts['env']['HOME'] }}/.devenv/scripts"
+        state: directory
+        mode: "0755"
+
+    - name: Download git-prompt.sh
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/git/git/master/contrib/completion/git-prompt.sh
+        dest: "{{ ansible_facts['env']['HOME'] }}/.devenv/scripts/git-prompt.sh"
+        mode: "0644"
+        force: false
+
+    - name: Copy .bashrc_devenv.sh
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../dotfiles/.bashrc_devenv.sh"
+        dest: "{{ ansible_facts['env']['HOME'] }}/.bashrc_devenv.sh"
+        force: true
+
+    - name: Source .bashrc_devenv.sh in ~/.bashrc
+      ansible.builtin.blockinfile:
+        path: "{{ ansible_facts['env']['HOME'] }}/.bashrc"
+        create: true
+        marker: "# {mark} DEVENV"
+        block: |
+          [ -f ~/.bashrc_devenv.sh ] && source ~/.bashrc_devenv.sh
