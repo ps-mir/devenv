@@ -90,10 +90,10 @@ fi
 # ── ansible ───────────────────────────────────────────────────────────────────
 if ! command -v ansible-playbook &>/dev/null; then
   echo "Installing ansible..."
-  uv tool install ansible
-  echo "ansible installed: $(ansible --version | head -1)"
+  uv tool install ansible-core
+  echo "ansible installed: $(ansible-playbook --version | head -1)"
 else
-  echo "ansible already installed: $(ansible --version | head -1)"
+  echo "ansible already installed: $(ansible-playbook --version | head -1)"
 fi
 
 # ── run base playbook ─────────────────────────────────────────────────────────
