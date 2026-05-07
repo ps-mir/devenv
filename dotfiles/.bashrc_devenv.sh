@@ -1,4 +1,5 @@
 source ~/.devenv/scripts/git-prompt.sh
+[ -f ~/nvm.sh ] && source ~/nvm.sh
 
 export GIT_PS1_SHOWDIRTYSTATE=1
 export GIT_PS1_SHOWUNTRACKEDFILES=1

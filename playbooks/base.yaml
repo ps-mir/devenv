@@ -133,3 +133,40 @@
         marker: "# {mark} DEVENV"
         block: |
           [ -f ~/.bashrc_devenv.sh ] && source ~/.bashrc_devenv.sh
+
+    # ansible runs in a non-interactive shell so .bashrc is never loaded;
+    # source ~/nvm.sh explicitly to check if nvm is installed and working.
+    - name: Check if nvm is working
+      ansible.builtin.shell:
+        cmd: source ~/nvm.sh && nvm --version
+        executable: /bin/bash
+      register: nvm_check
+      failed_when: false
+      changed_when: false
+
+    - name: nvm
+      when: nvm_check.rc != 0
+      block:
+
+        - name: Get latest nvm release
+          ansible.builtin.uri:
+            url: https://api.github.com/repos/nvm-sh/nvm/releases/latest
+            return_content: true
+          register: nvm_release
+
+        - name: Set nvm version fact
+          ansible.builtin.set_fact:
+            nvm_version: "{{ (nvm_release.content | from_json).tag_name }}"
+
+        - name: Download and run nvm install script
+          ansible.builtin.shell:
+            cmd: "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/{{ nvm_version }}/install.sh | bash"
+            executable: /bin/bash
+          environment:
+            PROFILE: /dev/null
+
+        - name: Copy nvm.sh
+          ansible.builtin.copy:
+            src: "{{ playbook_dir }}/../dotfiles/nvm.sh"
+            dest: "{{ ansible_facts['env']['HOME'] }}/nvm.sh"
+            force: true
