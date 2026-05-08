@@ -1,0 +1,64 @@
+---
+- name: Go setup
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: true
+
+  tasks:
+
+    - name: Get installed Go version
+      ansible.builtin.command: go version
+      register: go_installed
+      failed_when: false
+      changed_when: false
+
+    - name: Go (Linux)
+      when: ansible_facts["system"] == "Linux"
+      block:
+
+        - name: Map architecture to Go arch name
+          ansible.builtin.set_fact:
+            go_arch: "{{ {'x86_64': 'amd64', 'aarch64': 'arm64'}[ansible_facts['architecture']] }}"
+
+        - name: Get latest Go release
+          ansible.builtin.uri:
+            url: https://go.dev/dl/?mode=json
+            return_content: true
+          register: go_release
+
+        - name: Set Go version fact
+          ansible.builtin.set_fact:
+            go_version: "{{ (go_release.content | from_json)[0].version }}"
+
+        - name: Install Go
+          when: go_version not in (go_installed.stdout | default(''))
+          become: true
+          block:
+
+            - name: Download Go tarball
+              ansible.builtin.get_url:
+                url: "https://dl.google.com/go/{{ go_version }}.linux-{{ go_arch }}.tar.gz"
+                dest: /tmp/go.tar.gz
+                mode: "0644"
+                force: true
+
+            - name: Remove existing Go installation
+              ansible.builtin.file:
+                path: /usr/local/go
+                state: absent
+
+            - name: Extract Go
+              ansible.builtin.unarchive:
+                src: /tmp/go.tar.gz
+                dest: /usr/local
+                remote_src: true
+
+        - name: Show Go version
+          ansible.builtin.command: /usr/local/go/bin/go version
+          register: go_version_out
+          changed_when: false
+
+        - name: Go version
+          ansible.builtin.debug:
+            msg: "{{ go_version_out.stdout }}"

@@ -1,5 +1,6 @@
 source ~/.devenv/scripts/git-prompt.sh
 [ -f ~/nvm.sh ] && source ~/nvm.sh
+[ -d /usr/local/go/bin ] && export PATH=$PATH:/usr/local/go/bin
 
 export GIT_PS1_SHOWDIRTYSTATE=1
 export GIT_PS1_SHOWUNTRACKEDFILES=1
