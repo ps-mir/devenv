@@ -178,6 +178,52 @@
             dest: "{{ ansible_facts['env']['HOME'] }}/nvm.sh"
             force: true
 
+    - name: Check if gh is installed
+      ansible.builtin.command: which gh
+      register: gh_check
+      failed_when: false
+      changed_when: false
+
+    - name: GitHub CLI (Debian)
+      when:
+        - ansible_facts["os_family"] == "Debian"
+        - gh_check.rc != 0
+      become: true
+      block:
+
+        - name: Install wget
+          ansible.builtin.apt:
+            name: [wget]
+            state: present
+
+        - name: Create keyrings directory
+          ansible.builtin.file:
+            path: /etc/apt/keyrings
+            state: directory
+            mode: "0755"
+
+        - name: Download GitHub CLI GPG key
+          ansible.builtin.get_url:
+            url: https://cli.github.com/packages/githubcli-archive-keyring.gpg
+            dest: /etc/apt/keyrings/githubcli-archive-keyring.gpg
+            mode: "a+r"
+
+        - name: Get dpkg architecture
+          ansible.builtin.command: dpkg --print-architecture
+          register: gh_dpkg_arch
+          changed_when: false
+
+        - name: Add GitHub CLI apt repository
+          ansible.builtin.copy:
+            dest: /etc/apt/sources.list.d/github-cli.list
+            content: "deb [arch={{ gh_dpkg_arch.stdout }} signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main\n"
+
+        - name: Install gh
+          ansible.builtin.apt:
+            name: [gh]
+            update_cache: true
+            state: present
+
     - name: Check if claude is installed
       ansible.builtin.command: which claude
       register: claude_check
