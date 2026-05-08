@@ -177,3 +177,15 @@
             src: "{{ playbook_dir }}/../dotfiles/nvm.sh"
             dest: "{{ ansible_facts['env']['HOME'] }}/nvm.sh"
             force: true
+
+    - name: Check if claude is installed
+      ansible.builtin.command: which claude
+      register: claude_check
+      failed_when: false
+      changed_when: false
+
+    - name: Install Claude Code
+      when: claude_check.rc != 0
+      ansible.builtin.shell:
+        cmd: curl -fsSL https://claude.ai/install.sh | bash
+        executable: /bin/bash
