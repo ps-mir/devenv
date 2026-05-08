@@ -121,6 +121,8 @@ ansible-playbook "${ANSIBLE_ARGS[@]}" "$BASE_PLAYBOOK"
 
 # ── run role playbooks ─────────────────────────────────────────────────────────
 if [[ -n "${ANSIBLE_ROLES:-}" ]]; then
+  # Normalize JSON array (["a","b"]) or space-separated values to a plain list
+  ANSIBLE_ROLES=$(echo "$ANSIBLE_ROLES" | tr -d '[]"' | tr ',' ' ')
   for role in $ANSIBLE_ROLES; do
     ROLE_PLAYBOOK="$DEVENV_DIR/playbooks/${role}.yaml"
     if [[ -f "$ROLE_PLAYBOOK" ]]; then
