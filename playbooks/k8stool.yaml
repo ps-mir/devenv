@@ -87,6 +87,46 @@
           ansible.builtin.debug:
             msg: "{{ minikube_version_out.stdout }}"
 
+    - name: kind (Linux x86_64)
+      when:
+        - ansible_facts["system"] == "Linux"
+        - ansible_facts["architecture"] == "x86_64"
+      block:
+
+        - name: Get installed kind version
+          ansible.builtin.command: kind version
+          register: kind_installed
+          failed_when: false
+          changed_when: false
+
+        - name: Get latest kind version
+          ansible.builtin.uri:
+            url: https://api.github.com/repos/kubernetes-sigs/kind/releases/latest
+            return_content: true
+          register: kind_latest
+
+        - name: Set kind version fact
+          ansible.builtin.set_fact:
+            kind_version: "{{ (kind_latest.content | from_json).tag_name }}"
+
+        - name: Download kind binary
+          become: true
+          when: kind_version not in (kind_installed.stdout | default(''))
+          ansible.builtin.get_url:
+            url: "https://storage.googleapis.com/k8s-staging-kind/latest/kind-linux-amd64"
+            dest: /usr/local/bin/kind
+            mode: "0755"
+            force: true
+
+        - name: kind version
+          ansible.builtin.command: kind version
+          register: kind_version_out
+          changed_when: false
+
+        - name: Show kind version
+          ansible.builtin.debug:
+            msg: "{{ kind_version_out.stdout }}"
+
     - name: act (Linux)
       when: ansible_facts["system"] == "Linux"
       become: true
