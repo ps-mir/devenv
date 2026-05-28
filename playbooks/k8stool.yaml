@@ -47,6 +47,46 @@
           ansible.builtin.debug:
             msg: "{{ (kubectl_version_out.stdout | from_yaml).clientVersion.gitVersion }}"
 
+    - name: minikube (Linux x86_64)
+      when:
+        - ansible_facts["system"] == "Linux"
+        - ansible_facts["architecture"] == "x86_64"
+      block:
+
+        - name: Get installed minikube version
+          ansible.builtin.command: minikube version --short
+          register: minikube_installed
+          failed_when: false
+          changed_when: false
+
+        - name: Get latest minikube version
+          ansible.builtin.uri:
+            url: https://api.github.com/repos/kubernetes/minikube/releases/latest
+            return_content: true
+          register: minikube_latest
+
+        - name: Set minikube version fact
+          ansible.builtin.set_fact:
+            minikube_version: "{{ (minikube_latest.content | from_json).tag_name }}"
+
+        - name: Download minikube binary
+          become: true
+          when: minikube_version not in (minikube_installed.stdout | default(''))
+          ansible.builtin.get_url:
+            url: "https://github.com/kubernetes/minikube/releases/download/{{ minikube_version }}/minikube-linux-amd64"
+            dest: /usr/local/bin/minikube
+            mode: "0755"
+            force: true
+
+        - name: minikube version
+          ansible.builtin.command: minikube version --short
+          register: minikube_version_out
+          changed_when: false
+
+        - name: Show minikube version
+          ansible.builtin.debug:
+            msg: "{{ minikube_version_out.stdout }}"
+
     - name: act (Linux)
       when: ansible_facts["system"] == "Linux"
       become: true
