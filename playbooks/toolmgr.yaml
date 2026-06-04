@@ -1,0 +1,43 @@
+---
+- name: mise setup
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: true
+
+  tasks:
+
+    - name: Check if mise is installed
+      ansible.builtin.command: which mise
+      register: mise_check
+      failed_when: false
+      changed_when: false
+
+    - name: Install mise
+      when: mise_check.rc != 0
+      ansible.builtin.shell:
+        cmd: curl -fsSL https://mise.run | sh
+        executable: /bin/bash
+
+    - name: Add mise to PATH in .bashrc_devenv.sh
+      ansible.builtin.lineinfile:
+        path: "{{ ansible_facts['env']['HOME'] }}/.bashrc_devenv.sh"
+        line: '[ -d "$HOME/.local/bin" ] && export PATH=$PATH:$HOME/.local/bin'
+        regexp: '\.local/bin'
+        create: false
+
+    - name: Activate mise in .bashrc_devenv.sh
+      ansible.builtin.lineinfile:
+        path: "{{ ansible_facts['env']['HOME'] }}/.bashrc_devenv.sh"
+        line: 'command -v mise &>/dev/null && eval "$(mise activate bash)"'
+        regexp: 'mise activate'
+        create: false
+
+    - name: Show mise version
+      ansible.builtin.command: "{{ ansible_facts['env']['HOME'] }}/.local/bin/mise --version"
+      register: mise_version_out
+      changed_when: false
+
+    - name: mise version
+      ansible.builtin.debug:
+        msg: "{{ mise_version_out.stdout }}"

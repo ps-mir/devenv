@@ -1,0 +1,90 @@
+---
+- name: Java setup
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: true
+
+  tasks:
+
+    - name: Get installed Java version
+      ansible.builtin.command: java -version
+      register: java_installed
+      failed_when: false
+      changed_when: false
+
+    - name: Java 21 (Debian)
+      when:
+        - ansible_facts["os_family"] == "Debian"
+        - '"21" not in (java_installed.stderr | default(""))'
+      become: true
+      block:
+
+        - name: Install prerequisites
+          ansible.builtin.apt:
+            name: [ca-certificates, curl, wget, apt-transport-https, gnupg]
+            update_cache: true
+            state: present
+
+        - name: Create keyrings directory
+          ansible.builtin.file:
+            path: /etc/apt/keyrings
+            state: directory
+            mode: "0755"
+
+        - name: Download Adoptium GPG key
+          ansible.builtin.get_url:
+            url: https://packages.adoptium.net/artifactory/api/gpg/key/public
+            dest: /etc/apt/keyrings/adoptium.asc
+            mode: "a+r"
+
+        - name: Get dpkg architecture
+          ansible.builtin.command: dpkg --print-architecture
+          register: dpkg_arch
+          changed_when: false
+
+        - name: Add Adoptium apt repository
+          ansible.builtin.copy:
+            dest: /etc/apt/sources.list.d/adoptium.list
+            content: "deb [arch={{ dpkg_arch.stdout }} signed-by=/etc/apt/keyrings/adoptium.asc] https://packages.adoptium.net/artifactory/deb {{ ansible_facts['distribution_release'] }} main\n"
+
+        - name: Install Temurin 21
+          ansible.builtin.apt:
+            name: [temurin-21-jdk]
+            update_cache: true
+            state: present
+
+    - name: Map architecture to JVM directory name
+      ansible.builtin.set_fact:
+        jvm_arch: "{{ {'x86_64': 'amd64', 'aarch64': 'arm64'}[ansible_facts['architecture']] }}"
+
+    - name: Find Temurin 21 installation path
+      ansible.builtin.shell:
+        cmd: "find /usr/lib/jvm -maxdepth 1 -name 'temurin-21*{{ jvm_arch }}*' -type d | head -1"
+        executable: /bin/bash
+      register: temurin_path
+      changed_when: false
+      failed_when: temurin_path.stdout == ""
+
+    - name: Set JAVA_HOME in .bashrc_devenv.sh
+      ansible.builtin.lineinfile:
+        path: "{{ ansible_facts['env']['HOME'] }}/.bashrc_devenv.sh"
+        line: "export JAVA_HOME={{ temurin_path.stdout }}"
+        regexp: '^export JAVA_HOME='
+        create: false
+
+    - name: Add JAVA_HOME/bin to PATH in .bashrc_devenv.sh
+      ansible.builtin.lineinfile:
+        path: "{{ ansible_facts['env']['HOME'] }}/.bashrc_devenv.sh"
+        line: '[ -d "$JAVA_HOME/bin" ] && export PATH=$PATH:$JAVA_HOME/bin'
+        regexp: 'JAVA_HOME/bin'
+        create: false
+
+    - name: Show Java version
+      ansible.builtin.command: "{{ temurin_path.stdout }}/bin/java -version"
+      register: java_version_out
+      changed_when: false
+
+    - name: Java version
+      ansible.builtin.debug:
+        msg: "{{ java_version_out.stderr_lines[0] }}"
