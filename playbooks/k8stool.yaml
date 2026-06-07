@@ -112,11 +112,16 @@
         - name: Download kind binary
           become: true
           when: kind_version not in (kind_installed.stdout | default(''))
-          ansible.builtin.get_url:
-            url: "https://storage.googleapis.com/k8s-staging-kind/latest/kind-linux-amd64"
-            dest: /usr/local/bin/kind
+          ansible.builtin.command:
+            cmd: "wget -q -O /usr/local/bin/kind https://github.com/kubernetes-sigs/kind/releases/download/{{ kind_version }}/kind-linux-amd64"
+          changed_when: true
+
+        - name: Set kind binary permissions
+          become: true
+          when: kind_version not in (kind_installed.stdout | default(''))
+          ansible.builtin.file:
+            path: /usr/local/bin/kind
             mode: "0755"
-            force: true
 
         - name: kind version
           ansible.builtin.command: kind version
@@ -129,21 +134,40 @@
 
     - name: act (Linux)
       when: ansible_facts["system"] == "Linux"
-      become: true
       block:
+
+        - name: Get installed act version
+          ansible.builtin.command: act --version
+          register: act_installed
+          failed_when: false
+          changed_when: false
 
         - name: Map architecture to act arch name
           ansible.builtin.set_fact:
             act_arch: "{{ {'x86_64': 'x86_64', 'aarch64': 'arm64'}[ansible_facts['architecture']] }}"
 
+        - name: Get latest act version
+          ansible.builtin.uri:
+            url: https://api.github.com/repos/nektos/act/releases/latest
+            return_content: true
+          register: act_latest
+
+        - name: Set act version fact
+          ansible.builtin.set_fact:
+            act_version: "{{ (act_latest.content | from_json).tag_name }}"
+
         - name: Download act tarball
+          become: true
+          when: (act_version | regex_replace('^v', '')) not in (act_installed.stdout | default(''))
           ansible.builtin.get_url:
-            url: "https://github.com/nektos/act/releases/latest/download/act_Linux_{{ act_arch }}.tar.gz"
+            url: "https://github.com/nektos/act/releases/download/{{ act_version }}/act_Linux_{{ act_arch }}.tar.gz"
             dest: /tmp/act.tar.gz
             mode: "0644"
             force: true
 
         - name: Extract act binary
+          become: true
+          when: (act_version | regex_replace('^v', '')) not in (act_installed.stdout | default(''))
           ansible.builtin.unarchive:
             src: /tmp/act.tar.gz
             dest: /usr/local/bin
