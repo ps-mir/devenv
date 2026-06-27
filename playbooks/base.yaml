@@ -235,3 +235,43 @@
       ansible.builtin.shell:
         cmd: curl -fsSL https://claude.ai/install.sh | bash
         executable: /bin/bash
+
+    - name: Check if fzf is installed
+      ansible.builtin.command: which fzf
+      register: fzf_check
+      failed_when: false
+      changed_when: false
+
+    - name: fzf already installed, skipping
+      when: fzf_check.rc == 0
+      ansible.builtin.debug:
+        msg: "fzf already installed, skipping"
+
+    - name: Install fzf (Debian)
+      when:
+        - ansible_facts["os_family"] == "Debian"
+        - fzf_check.rc != 0
+      become: true
+      ansible.builtin.apt:
+        name: [fzf]
+        state: present
+
+    - name: Check if zoxide is installed
+      ansible.builtin.command: which zoxide
+      register: zoxide_check
+      failed_when: false
+      changed_when: false
+
+    - name: zoxide already installed, skipping
+      when: zoxide_check.rc == 0
+      ansible.builtin.debug:
+        msg: "zoxide already installed, skipping"
+
+    - name: Install zoxide (Debian)
+      when:
+        - ansible_facts["os_family"] == "Debian"
+        - zoxide_check.rc != 0
+      become: true
+      ansible.builtin.apt:
+        name: [zoxide]
+        state: present
