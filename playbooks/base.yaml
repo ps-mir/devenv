@@ -275,3 +275,44 @@
       ansible.builtin.apt:
         name: [zoxide]
         state: present
+
+    - name: Check if bazel is installed
+      ansible.builtin.command: which bazel
+      register: bazel_check
+      failed_when: false
+      changed_when: false
+
+    - name: bazel already installed, skipping
+      when: bazel_check.rc == 0
+      ansible.builtin.debug:
+        msg: "bazel already installed, skipping"
+
+    # bazelisk installs itself as the `bazel` binary and transparently
+    # downloads/runs the version pinned by a project's .bazelversion.
+    - name: Install bazelisk as bazel (Debian)
+      when:
+        - ansible_facts["os_family"] == "Debian"
+        - bazel_check.rc != 0
+      become: true
+      block:
+
+        - name: Get latest bazelisk release
+          ansible.builtin.uri:
+            url: https://api.github.com/repos/bazelbuild/bazelisk/releases/latest
+            return_content: true
+          register: bazelisk_release
+
+        - name: Set bazelisk version fact
+          ansible.builtin.set_fact:
+            bazelisk_version: "{{ (bazelisk_release.content | from_json).tag_name }}"
+
+        - name: Get dpkg architecture
+          ansible.builtin.command: dpkg --print-architecture
+          register: bazelisk_dpkg_arch
+          changed_when: false
+
+        - name: Download bazelisk binary as bazel
+          ansible.builtin.get_url:
+            url: "https://github.com/bazelbuild/bazelisk/releases/download/{{ bazelisk_version }}/bazelisk-linux-{{ bazelisk_dpkg_arch.stdout }}"
+            dest: /usr/local/bin/bazel
+            mode: "0755"
