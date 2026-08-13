@@ -316,3 +316,51 @@
             url: "https://github.com/bazelbuild/bazelisk/releases/download/{{ bazelisk_version }}/bazelisk-linux-{{ bazelisk_dpkg_arch.stdout }}"
             dest: /usr/local/bin/bazel
             mode: "0755"
+
+    - name: Check if btop is installed
+      ansible.builtin.command: which btop
+      register: btop_check
+      failed_when: false
+      changed_when: false
+
+    - name: btop already installed, skipping
+      when: btop_check.rc == 0
+      ansible.builtin.debug:
+        msg: "btop already installed, skipping"
+
+    - name: Install btop (Debian)
+      when:
+        - ansible_facts["os_family"] == "Debian"
+        - btop_check.rc != 0
+      become: true
+      block:
+
+        - name: Get latest btop release
+          ansible.builtin.uri:
+            url: https://api.github.com/repos/aristocratos/btop/releases/latest
+            return_content: true
+          register: btop_release
+
+        - name: Set btop version fact
+          ansible.builtin.set_fact:
+            btop_version: "{{ (btop_release.content | from_json).tag_name }}"
+
+        - name: Download btop tarball
+          ansible.builtin.get_url:
+            url: "https://github.com/aristocratos/btop/releases/download/{{ btop_version }}/btop-{{ ansible_facts['architecture'] }}-unknown-linux-musl.tar.gz"
+            dest: /tmp/btop.tar.gz
+            mode: "0644"
+            force: true
+
+        - name: Extract btop tarball
+          ansible.builtin.unarchive:
+            src: /tmp/btop.tar.gz
+            dest: /tmp
+            remote_src: true
+
+        - name: Install btop binary
+          ansible.builtin.copy:
+            src: /tmp/btop/bin/btop
+            dest: /usr/local/bin/btop
+            mode: "0755"
+            remote_src: true
