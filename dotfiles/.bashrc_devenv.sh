@@ -23,3 +23,5 @@ export OTEL_EXPORTER_OTLP_PROTOCOL=grpc
 export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
 # default metric export interval is 60s — too slow for a manual check, shrink it
 export OTEL_METRIC_EXPORT_INTERVAL=5000
+# cumulative temporality so the collector accumulates deltas correctly
+export OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=cumulative
