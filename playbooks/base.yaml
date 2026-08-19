@@ -236,6 +236,36 @@
         cmd: curl -fsSL https://claude.ai/install.sh | bash
         executable: /bin/bash
 
+    - name: Ensure ~/.claude directory exists
+      ansible.builtin.file:
+        path: "{{ ansible_facts['env']['HOME'] }}/.claude"
+        state: directory
+        mode: "0755"
+
+    - name: Check for existing ~/.claude/settings.json
+      ansible.builtin.stat:
+        path: "{{ ansible_facts['env']['HOME'] }}/.claude/settings.json"
+      register: claude_settings_stat
+
+    - name: Load existing ~/.claude/settings.json
+      ansible.builtin.set_fact:
+        claude_settings_existing: >-
+          {{ (lookup('file', ansible_facts['env']['HOME'] + '/.claude/settings.json') | from_json)
+             if claude_settings_stat.stat.exists else {} }}
+
+    # ~/.claude/settings.json is NOT devenv-owned like the other dotfiles above —
+    # Claude Code itself and the user both write to it (theme, permissions, etc.).
+    # This must stay a recursive merge, never a plain copy(force=true) overwrite,
+    # or the next playbook run would silently clobber unrelated settings.
+    - name: Merge devenv-managed Claude settings into ~/.claude/settings.json
+      ansible.builtin.copy:
+        dest: "{{ ansible_facts['env']['HOME'] }}/.claude/settings.json"
+        content: >-
+          {{ claude_settings_existing
+             | combine(lookup('file', playbook_dir + '/../dotfiles/claude/settings.json') | from_json, recursive=True)
+             | to_nice_json }}
+        mode: "0644"
+
     - name: Check if fzf is installed
       ansible.builtin.command: which fzf
       register: fzf_check
