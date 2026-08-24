@@ -62,3 +62,31 @@
         - name: Go version
           ansible.builtin.debug:
             msg: "{{ go_version_out.stdout }}"
+
+        - name: Ensure precommit-sandbox directories exist
+          ansible.builtin.file:
+            path: "{{ item }}"
+            state: directory
+            mode: "0755"
+          loop:
+            - "{{ ansible_facts['env']['HOME'] }}/.local/share/precommit-sandbox"
+            - "{{ ansible_facts['env']['HOME'] }}/.local/bin"
+
+        - name: Install precommit-sandbox Dockerfile
+          ansible.builtin.copy:
+            src: "{{ playbook_dir }}/../dotfiles/precommit-sandbox/Dockerfile"
+            dest: "{{ ansible_facts['env']['HOME'] }}/.local/share/precommit-sandbox/Dockerfile"
+            mode: "0644"
+
+        - name: Install precommit-sandbox script
+          ansible.builtin.copy:
+            src: "{{ playbook_dir }}/../dotfiles/precommit-sandbox/run.sh"
+            dest: "{{ ansible_facts['env']['HOME'] }}/.local/bin/precommit-sandbox"
+            mode: "0755"
+
+        - name: Add ~/.local/bin to PATH in .bashrc_devenv.sh
+          ansible.builtin.lineinfile:
+            path: "{{ ansible_facts['env']['HOME'] }}/.bashrc_devenv.sh"
+            line: '[ -d "$HOME/.local/bin" ] && export PATH=$PATH:$HOME/.local/bin'
+            regexp: '\.local/bin'
+            create: false
