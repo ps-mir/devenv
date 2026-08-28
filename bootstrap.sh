@@ -55,6 +55,8 @@ case $OS in
       curl \
       wget \
       unzip \
+      tmux \
+      tree \
       build-essential \
       ca-certificates
     ;;
@@ -64,6 +66,8 @@ case $OS in
       curl \
       wget \
       unzip \
+      tmux \
+      tree \
       gcc \
       gcc-c++ \
       make \
