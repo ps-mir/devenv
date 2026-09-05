@@ -58,6 +58,7 @@ case $OS in
       tmux \
       tree \
       build-essential \
+      pkg-config \
       ca-certificates
     ;;
   fedora|rhel|centos)
@@ -71,6 +72,7 @@ case $OS in
       gcc \
       gcc-c++ \
       make \
+      pkgconf-pkg-config \
       ca-certificates
     ;;
   *)
