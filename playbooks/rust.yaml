@@ -1,0 +1,100 @@
+---
+- name: Rust setup
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: true
+
+  vars:
+    cargo_bin: "{{ ansible_facts['env']['HOME'] }}/.cargo/bin"
+
+  tasks:
+
+    - name: Install libssl-dev (Debian)
+      when: ansible_facts["os_family"] == "Debian"
+      become: true
+      ansible.builtin.apt:
+        name: [libssl-dev]
+        state: present
+
+    - name: Check if rustup is installed
+      ansible.builtin.stat:
+        path: "{{ cargo_bin }}/rustup"
+      register: rustup_check
+
+    # --no-modify-path: devenv owns PATH/env sourcing via .bashrc_devenv.sh,
+    # not rustup's own profile-editing logic.
+    - name: Install rustup
+      when: not rustup_check.stat.exists
+      ansible.builtin.shell:
+        cmd: >
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |
+          sh -s -- -y --no-modify-path --default-toolchain stable --profile default
+        executable: /bin/bash
+
+    - name: Source cargo env in .bashrc_devenv.sh
+      ansible.builtin.lineinfile:
+        path: "{{ ansible_facts['env']['HOME'] }}/.bashrc_devenv.sh"
+        line: '[ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"'
+        regexp: '\.cargo/env'
+        create: false
+
+    # Needed by some otap-dataflow crates' wasm plugin tests. Per-project
+    # toolchain *version* is pinned via each repo's rust-toolchain.toml and
+    # resolved automatically by rustup; devenv only installs rustup itself.
+    - name: Add wasm32-wasip2 target
+      ansible.builtin.command: "{{ cargo_bin }}/rustup target add wasm32-wasip2"
+      register: wasm_target
+      changed_when: "'installing component' in wasm_target.stderr"
+
+    - name: Show rustc version
+      ansible.builtin.command: "{{ cargo_bin }}/rustc --version"
+      register: rustc_version_out
+      changed_when: false
+
+    - name: rustc version
+      ansible.builtin.debug:
+        msg: "{{ rustc_version_out.stdout }}"
+
+    - name: Show cargo version
+      ansible.builtin.command: "{{ cargo_bin }}/cargo --version"
+      register: cargo_version_out
+      changed_when: false
+
+    - name: cargo version
+      ansible.builtin.debug:
+        msg: "{{ cargo_version_out.stdout }}"
+
+    - name: Check if cargo-binstall is installed
+      ansible.builtin.stat:
+        path: "{{ cargo_bin }}/cargo-binstall"
+      register: binstall_check
+
+    - name: Install cargo-binstall
+      when: not binstall_check.stat.exists
+      ansible.builtin.shell:
+        cmd: curl -L --proto '=https' -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+        executable: /bin/bash
+      environment:
+        CARGO_HOME: "{{ ansible_facts['env']['HOME'] }}/.cargo"
+
+    # Optional dev tools used by otap-dataflow CI (coverage, audit, binary
+    # size); not required for `cargo xtask check`. Installed via binstall
+    # (prebuilt binaries) rather than `cargo install` to avoid long
+    # from-source compiles during ansible runs, and always pulls latest.
+    - name: Check installed cargo dev tools
+      ansible.builtin.stat:
+        path: "{{ cargo_bin }}/{{ item }}"
+      register: cargo_tool_stat
+      loop:
+        - cargo-nextest
+        - cargo-llvm-cov
+        - cargo-audit
+        - cargo-bloat
+
+    - name: Install missing cargo dev tools via binstall
+      ansible.builtin.command: "{{ cargo_bin }}/cargo-binstall --no-confirm {{ item.item }}"
+      loop: "{{ cargo_tool_stat.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+      when: not item.stat.exists
